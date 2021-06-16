@@ -1,2 +1,2 @@
 # Processing-of-UV-Vis-data-from-Lambda-spectrometer
-This script takes raw data from reflectance measurement acquired from Lambda spectrometer and performs further processing
+This script takes raw data from reflectance measurement acquired from Lambda spectrometer and performs normalization (to maximal value), calculates absorbance (based on Kubelka-Munk Function) and allows to estimate optical bandgap through Tauc plots. Script iterates through all of the files in a given folder. WARNING - as for now, script accepts measurements with the step 1nm in a given range.
