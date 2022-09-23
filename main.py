@@ -1,15 +1,82 @@
-################################################################################################***** ***
+# ###############################################################################################***** ***
 # This program calculates Kubelka-Munk Function and data for Tauc plots from
 # reflectance UV-Vis reflectance spectra, measured on lambda 750 in 1.11 laboratory,
 # (through the door and to the left), in ACMiN, Kraków, Poland, Europe, Earth, Solar System, Milky Way.
 # Results can be saved to txt file for further processing and visualisation. Bandgap can be estimated
 # through line fitting of chosen tauc plot.
-################################################################################################***** ***
+# ###############################################################################################***** ***
 
 import numpy as np
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+
+
+# Defining all necesary function for data transformation, plotting and band gap estimation
+def data_transformation(x):
+    # Reading data file
+    data_raw = np.genfromtxt(x, delimiter=',', skip_header=2)
+
+    # data preparation
+    data_x = np.flip(data_raw[:, 1], 0)
+
+    # data normalisation
+    max_arg = np.amax(data_x)
+    norm_x_data = data_x / max_arg
+
+    # Kubelk-Munk Function
+    Fkm = ((1 - norm_x_data) ** 2) / (2 * norm_x_data)
+
+    # Preparation for Tauc plots
+    try:
+        tauc1_x = (Fkm * hv) ** 2  # direct allowed
+        tauc2_x = (Fkm * hv) ** (1 / 2)  # indirect allowed
+    except:
+        print("\nWrong wavelenght range.")
+        input("Press enter to quit")
+        quit()
+    return data_raw, data_x, norm_x_data, Fkm, tauc1_x, tauc2_x
+
+
+def plot(norm_data, Fkm, tauc1, tauc2):
+    figure, axis = plt.subplots(1, 4, squeeze=False)
+    axis[0, 0].plot(data_range, norm_data)
+    axis[0, 0].set_title("Normalised reflectance")
+    axis[0, 1].plot(data_range, Fkm)
+    axis[0, 1].set_title("Kubelka-Munk Function")
+    axis[0, 2].plot(hv, tauc1)
+    axis[0, 2].set_title("Tauc plot, direct allowed")
+    axis[0, 3].plot(hv, tauc2)
+    axis[0, 3].set_title("Tauc plot, indirect allowed")
+    plt.show()
+
+
+def get_bandgap(hv, tauc):
+    hv_min, hv_max = [float(x) for x in input(
+        "\nEnter energy range for line fitting in tauc plot: minimum maximum (e.g. 3.2 3.8).\n").split()]
+
+    # Energy scale to wavelenght for indexing. Also values correction (offset from starting wavelenght)
+    fit_min = int(1240.0 / hv_max) - var1
+    fit_max = int(1240.0 / hv_min) - var1
+
+    # Variable correction
+    tauc = tauc[0]
+
+    # Line fitting and band gap value extraction from X-axis intercept
+    x = hv[fit_min:fit_max]
+    y = tauc[fit_min:fit_max]
+    linear_model = np.polyfit(x, y, 1)
+    linear_model_fn = np.poly1d(linear_model)
+    band_gap_value = (-linear_model[1]) / (linear_model[0])
+
+    # Plotting with fitted line
+    plt.xlabel("Energy / eV")
+    plt.plot(hv, np.zeros(len(hv)), color="black")
+    plt.plot(hv, linear_model_fn(hv), color="red")
+    plt.plot(hv, tauc)
+    plt.show()
+    return band_gap_value
+
 
 # Necessary variables so that program doesn't crash
 list_of_csvfiles = []
@@ -50,70 +117,6 @@ if plotting == "y":
 
 data_range = np.arange(var1, var2 + 1)
 hv = 1240 / data_range
-
-# Defining all necesary function for data transformation, plotting and band gap estimation
-def data_transformation(x):
-    # Reading data file
-    global tauc1, tauc2
-    data_raw = np.genfromtxt(x, delimiter=',', skip_header=2)
-
-    # data preparation
-    data = np.flip(data_raw[:, 1], 0)
-
-    # data normalisation
-    max_arg = np.amax(data)
-    norm_data = data / max_arg
-
-    # Kubelk-Munk Function
-    Fkm = ((1 - norm_data) ** 2) / (2 * norm_data)
-
-    # Preparation for Tauc plots
-    try:
-        tauc1 = (Fkm * hv) ** 2  # direct allowed
-        tauc2 = (Fkm * hv) ** (1 / 2)  # indirect allowed
-    except:
-        print("\nWrong wavelenght range.")
-        input("Press enter to quit")
-        quit()
-    return data_raw, data, norm_data, Fkm, tauc1, tauc2
-
-def plot(norm_data, Fkm, tauc1, tauc2):
-    figure, axis = plt.subplots(1, 4, squeeze=False)
-    axis[0, 0].plot(data_range, norm_data)
-    axis[0, 0].set_title("Normalised reflectance")
-    axis[0, 1].plot(data_range, Fkm)
-    axis[0, 1].set_title("Kubelka-Munk Function")
-    axis[0, 2].plot(hv, tauc1)
-    axis[0, 2].set_title("Tauc plot, direct allowed")
-    axis[0, 3].plot(hv, tauc2)
-    axis[0, 3].set_title("Tauc plot, indirect allowed")
-    plt.show()
-
-def get_bandgap(hv, tauc):
-    hv_min, hv_max = [float(x) for x in input(
-        "\nEnter energy range for line fitting in tauc plot: minimum maximum (e.g. 3.2 3.8).\n").split()]
-
-    # Energy scale to wavelenght for indexing. Also values correction (offset from starting wavelenght)
-    fit_min = int(1240.0 / hv_max) - var1
-    fit_max = int(1240.0 / hv_min) - var1
-
-    # Variable correction
-    tauc = tauc[0]
-
-    # Line fitting and band gap value extraction from X-axis intercept
-    x = hv[fit_min:fit_max]
-    y = tauc[fit_min:fit_max]
-    linear_model = np.polyfit(x, y, 1)
-    linear_model_fn = np.poly1d(linear_model)
-    band_gap_value = (-linear_model[1]) / (linear_model[0])
-
-    # Plotting with fitted line
-    plt.xlabel("Energy / eV")
-    plt.plot(hv, np.zeros(len(hv)), color="black")
-    plt.plot(hv, linear_model_fn(hv), color="red")
-    plt.plot(hv, tauc)
-    plt.show()
-    return band_gap_value
 
 # Iteration over all csv files in working directory
 for file in os.listdir(directory):
@@ -166,4 +169,3 @@ saving_bandaps_T = saving_bandaps.T
 saving_bandaps_T.to_csv("collection_of_bandgaps.txt", sep='\t')
 
 input("\nEverything is done! Press Enter to quit and have nice day.")
-
